@@ -1,70 +1,49 @@
-# Getting Started with Create React App
+# CBE — Competency-Based Resume Analyzer
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A local-first application that extracts text from PDF, DOCX and TXT resumes, compares recognised competencies with a target job description, and produces an explainable match report with missing skills and development recommendations.
 
-## Available Scripts
+## Requirements
+- Node.js 18.17+ and npm
+- macOS, Windows or Linux
 
-In the project directory, you can run:
+## Quick start
+```bash
+git clone https://github.com/aayushmishra20/CBE.git
+cd CBE
+git checkout repair/cbe-end-to-end
+npm install
+npm run dev
+```
+Open **http://localhost:3000**. The API runs at **http://localhost:5001**.
 
-### `npm start`
+For a production frontend build: `npm run build`. Run the backend tests with `npm test`.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## How to use
+1. Upload a PDF, DOCX or TXT resume (maximum 8 MB).
+2. Paste the target job description (minimum 40 characters).
+3. Select **Run competency analysis**.
+4. Review the overall competency coverage, matched competencies, gaps, resume section check and recommended next steps.
+5. Reopen a previous analysis from Recent analyses.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## API
+- `GET /api/health` — service health
+- `POST /api/analyze` — multipart form fields: `resume`, `jobDescription`
+- `GET /api/analyses` — recent saved reports
+- `GET /api/analyses/:id` — one saved report
 
-### `npm test`
+## Configuration
+The backend defaults to port 5001. Set `PORT` to change it. Set `REACT_APP_API_URL` before building the frontend if the API is hosted elsewhere (default: `http://localhost:5001`). Optionally set `CLIENT_ORIGIN` to a comma-separated list of allowed frontend origins.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Data and privacy
+Uploaded files are removed after text extraction. Analysis summaries are stored as JSON in `backend/data/analyses.json`; temporary uploads are stored in `backend/uploads` and are not intended for source control. Do not upload sensitive personal data to a publicly exposed instance. Add authentication, access controls, HTTPS and a managed database before production deployment.
 
-### `npm run build`
+## Scoring methodology and limitations
+The current scoring engine uses a curated, transparent competency vocabulary and alias mapping. The match score is the percentage of recognised job-description competencies also found in the extracted resume text. Category coverage, missing competencies and resume section checks are included for explainability.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+This is a heuristic baseline, not an LLM assessment, validated psychometric instrument, or automated hiring decision. It can miss synonyms, context, proficiency and skills outside its catalogue. Human review remains necessary. Extend `backend/analysisEngine.js` to expand the taxonomy or introduce a validated semantic model.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Troubleshooting
+- If the UI reports API offline, keep both processes running with `npm run dev`.
+- If port 3000 or 5001 is occupied, stop the other process or set `PORT` for the backend.
+- Scanned/image-only PDFs need OCR; the current PDF parser extracts embedded text only.
+- If a PDF is encrypted or malformed, export it again as a text-searchable PDF or DOCX.
