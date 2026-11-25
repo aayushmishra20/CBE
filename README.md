@@ -1,70 +1,41 @@
-# Getting Started with Create React App
+# CBE — Competency-Based Education & Workforce Readiness
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A React dashboard with an Express/SQLite API for learner records and evidence-based resume competency analysis.
 
-## Available Scripts
+## Requirements
+- Node.js 18 or newer
+- npm 9 or newer
 
-In the project directory, you can run:
+## Setup
+```bash
+npm install
+npm start
+```
+The React app runs at http://localhost:3000.
 
-### `npm start`
+In a second terminal:
+```bash
+npm run server
+```
+The API runs at http://localhost:5001. Check it at http://localhost:5001/api/health.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+To run both processes together:
+```bash
+npm run dev
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Resume analysis
+Upload a text-based PDF, DOCX, or TXT resume (maximum 8 MB). Optionally paste a job description. The API extracts text and reports detected skills, competency evidence, a transparent heuristic evidence score, and missing evidence areas. This is a keyword/evidence aid, not a validated psychometric assessment, AI hiring decision, or proof of actual proficiency.
 
-### `npm test`
+## API
+- `GET /api/health` — service health
+- `GET /api/students` — list learner records
+- `POST /api/students` — create a learner; body: `{ "name": "...", "subjects": [{ "subject": "...", "marks": 80 }] }`
+- `GET /api/students/:id` — learner report
+- `POST /api/analyze` — multipart form with `resume` and optional `jobDescription`
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Data and configuration
+SQLite is stored in `backend/data/cbe.sqlite` and created automatically. Set `CBE_DB_PATH` to use another database path, `PORT` to change the API port, and `REACT_APP_API_URL` to change the frontend API origin. Uploads are temporary and removed after processing.
 
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Important repository note
+The original repository contains a legacy tracked `node_modules` tree and a `frontend` gitlink without a checked-in submodule configuration. Do not rely on either for installation. Use the root package manifest and tracked `src/` application.
