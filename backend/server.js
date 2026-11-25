@@ -1,29 +1,20 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
-const bodyParser = require('body-parser');
+require('./database');
 
 const app = express();
-const PORT = 5001;
+const PORT = Number(process.env.PORT) || 5001;
 
-// Middleware
-app.use(cors());
-app.use(bodyParser.json());
-
-// SQLite Database Connection
-const db = new sqlite3.Database('./database.db', (err) => {
-    if (err) {
-        console.error('Error connecting to SQLite database:', err);
-    } else {
-        console.log('Connected to SQLite database');
-    }
+app.use(cors({ origin: process.env.CLIENT_ORIGIN ? process.env.CLIENT_ORIGIN.split(',') : true }));
+app.use(express.json({ limit: '1mb' }));
+app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'careerfit-api' }));
+app.use('/api/jobs', require('./routes/jobs'));
+app.use('/api/resume', require('./routes/resume'));
+app.use('/api/students', require('./routes/students'));
+app.use((req, res) => res.status(404).json({ message: `Route not found: ${req.method} ${req.path}` }));
+app.use((error, _req, res, _next) => {
+  if (error.message && error.message.startsWith('Upload a PDF')) return res.status(400).json({ message: error.message });
+  console.error(error);
+  res.status(500).json({ message: 'Unexpected server error while processing the request.' });
 });
-
-// Routes
-const studentRoutes = require('./routes/students');
-app.use('/api/students', studentRoutes);
-
-// Start Server
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`CareerFit API listening at http://localhost:${PORT}`));

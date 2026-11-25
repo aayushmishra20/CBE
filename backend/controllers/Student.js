@@ -1,59 +1,73 @@
 const Student = require('../models/Students');
 
-// Get all students
-const getAllStudents = (req, res) => {
-    Student.getAll((err, students) => {
-        if (err) {
-            res.status(500).json({ message: err.message });
-        } else {
-            res.json(students);
-        }
-    });
+function normalizeStudent(row) {
+  if (!row) return row;
+  let subjects = [];
+  try { subjects = JSON.parse(row.subjects || '[]'); } catch (_) { subjects = []; }
+  return { ...row, subjects };
+}
+
+function classify(score) {
+  if (score >= 85) return 'Workforce Ready';
+  if (score >= 70) return 'Proficient';
+  if (score >= 50) return 'Developing';
+  return 'Needs Support';
+}
+
+const getAllStudents = (_req, res) => {
+  Student.getAll((error, rows) => {
+    if (error) return res.status(500).json({ message: 'Unable to load students.' });
+    res.json(rows.map(normalizeStudent));
+  });
 };
 
-// Add a new student
 const addStudent = (req, res) => {
-    const { name, subjects } = req.body;
-
-    // Validate the request data
-    if (!name || !subjects || !Array.isArray(subjects)) {
-        return res.status(400).json({ message: 'Invalid data. Name and subjects are required.' });
+  const { name, email = '', department = '', year = '', subjects } = req.body || {};
+  if (typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ message: 'Student name is required.' });
+  }
+  if (!Array.isArray(subjects) || subjects.length === 0) {
+    return res.status(400).json({ message: 'Add at least one competency or subject.' });
+  }
+  const cleanSubjects = [];
+  for (const item of subjects) {
+    const subject = typeof item.subject === 'string' ? item.subject.trim() : '';
+    const marks = Number(item.marks);
+    if (!subject || !Number.isFinite(marks) || marks < 0 || marks > 100) {
+      return res.status(400).json({ message: 'Each competency needs a name and a score from 0 to 100.' });
     }
-
-    // Calculate average score
-    const totalMarks = subjects.reduce((sum, subject) => sum + subject.marks, 0);
-    const averageScore = totalMarks / subjects.length;
-
-    // Dummy skillset prediction based on average score
-    let skillsetPrediction = 'Beginner';
-    if (averageScore > 80) skillsetPrediction = 'Advanced';
-    else if (averageScore > 60) skillsetPrediction = 'Intermediate';
-
-    const student = { name, subjects: JSON.stringify(subjects), averageScore, skillsetPrediction };
-    Student.add(student, (err) => {
-        if (err) {
-            res.status(400).json({ message: err.message });
-        } else {
-            res.status(201).json({ message: 'Student added successfully', student });
-        }
-    });
+    cleanSubjects.push({ subject, marks });
+  }
+  const averageScore = Number((cleanSubjects.reduce((sum, item) => sum + item.marks, 0) / cleanSubjects.length).toFixed(1));
+  const student = {
+    name: name.trim(), email: String(email).trim(), department: String(department).trim(),
+    year: String(year).trim(), subjects: cleanSubjects, averageScore,
+    skillsetPrediction: classify(averageScore)
+  };
+  Student.add(student, (error, id) => {
+    if (error) return res.status(500).json({ message: 'Could not save this student.' });
+    res.status(201).json({ message: 'Student added successfully.', student: { id, ...student } });
+  });
 };
 
-// Get student report
 const getStudentReport = (req, res) => {
-    const { id } = req.params;
-    Student.getById(id, (err, student) => {
-        if (err) {
-            res.status(500).json({ message: err.message });
-        } else {
-            res.json(student);
-        }
-    });
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) return res.status(400).json({ message: 'Invalid student ID.' });
+  Student.getById(id, (error, row) => {
+    if (error) return res.status(500).json({ message: 'Unable to load student report.' });
+    if (!row) return res.status(404).json({ message: 'Student not found.' });
+    res.json(normalizeStudent(row));
+  });
 };
 
-// Export all functions
-module.exports = {
-    getAllStudents,
-    addStudent,
-    getStudentReport,
+const deleteStudent = (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) return res.status(400).json({ message: 'Invalid student ID.' });
+  Student.delete(id, (error, changes) => {
+    if (error) return res.status(500).json({ message: 'Unable to delete student.' });
+    if (!changes) return res.status(404).json({ message: 'Student not found.' });
+    res.status(204).end();
+  });
 };
+
+module.exports = { getAllStudents, addStudent, getStudentReport, deleteStudent };

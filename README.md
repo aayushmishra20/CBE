@@ -1,70 +1,43 @@
-# Getting Started with Create React App
+# CareerFit — Resume Intelligence & Job Matching
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+CareerFit is a resume-to-job-description comparison application built with React, Express and local document parsing. Users upload a PDF/DOCX resume, choose a sample role or paste a custom job description, and receive a transparent skills-match report.
 
-## Available Scripts
+## Requirements
+- Node.js 18+
+- npm 9+
 
-In the project directory, you can run:
+## Setup
+```bash
+npm install
+npm run dev
+```
+Frontend: http://localhost:3000  
+API: http://localhost:5001
 
-### `npm start`
+## Workflow
+1. Upload a text-based PDF or DOCX resume (maximum 5 MB).
+2. Choose one of the curated sample jobs or paste a custom job description.
+3. The API extracts document text and identifies skills using a maintained skills/alias taxonomy.
+4. The analyzer compares required and preferred skills, extracts evidence snippets, and calculates a transparent weighted score.
+5. Review missing requirements and practical resume recommendations.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## API
+- `GET /api/health` — service health.
+- `GET /api/jobs` — curated sample jobs.
+- `GET /api/jobs/:id` — one job.
+- `POST /api/resume/analyze` — multipart form with `resume` (PDF/DOCX) and either `jobId` or `jobDescription`.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Scoring
+The match score is a deterministic heuristic:
+- Skills alignment: 80% (required skills weighted more heavily than preferred skills).
+- Experience signal: 10%.
+- Education section signal: 5%.
+- Project/delivery evidence: 5%.
 
-### `npm test`
+The report separately shows required/preferred skill coverage and text excerpts supporting detected skills. This is not a trained machine-learning model, an employment prediction or a hiring decision. It can miss synonyms, implicit experience and text in scanned/image-only PDFs. OCR is not included.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Privacy and limits
+Uploads are processed in memory and are not written to disk or persisted in the database. Maximum upload size is 5 MB. Use text-based PDFs or DOCX; scanned PDFs require OCR before analysis. The sample job listings are illustrative demo data, not live vacancies.
 
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Configuration
+Set `PORT` to change the API port and `REACT_APP_API_URL` to use a separately hosted API. In local development, the frontend proxies `/api` to port 5001.
