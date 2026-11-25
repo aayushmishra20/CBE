@@ -1,139 +1,79 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Bar } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js';
+import React, { useEffect, useState } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import api from './api';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
-
-const emptySubject = () => ({ subject: '', marks: '' });
-const levelClass = (score) => score >= 85 ? 'ready' : score >= 70 ? 'proficient' : score >= 50 ? 'developing' : 'support';
-
 function App() {
-  const [students, setStudents] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [department, setDepartment] = useState('');
-  const [year, setYear] = useState('');
-  const [subjects, setSubjects] = useState([emptySubject()]);
-  const [report, setReport] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [query, setQuery] = useState('');
+  const [jobs, setJobs] = useState([]);
+  const [selectedJob, setSelectedJob] = useState('');
+  const [file, setFile] = useState(null);
+  const [customMode, setCustomMode] = useState(false);
+  const [jobDescription, setJobDescription] = useState('');
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
-  const loadStudents = async () => {
-    try {
-      const { data } = await api.get('/students');
-      setStudents(data);
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Could not connect to the CBE API.');
-    } finally { setLoading(false); }
+  useEffect(() => { api.get('/jobs').then(({ data }) => { setJobs(data); if (data.length) setSelectedJob(data[0].id); }).catch(() => toast.error('Could not load sample jobs. Check that the API is running.')); }, []);
+
+  const acceptFile = (candidate) => {
+    if (!candidate) return;
+    const ext = candidate.name.toLowerCase().split('.').pop();
+    if (!['pdf', 'docx'].includes(ext)) return toast.error('Please choose a PDF or DOCX file.');
+    if (candidate.size > 5 * 1024 * 1024) return toast.error('Maximum resume size is 5 MB.');
+    setFile(candidate); setResult(null);
   };
 
-  useEffect(() => { loadStudents(); }, []);
-
-  const filteredStudents = useMemo(() => students.filter((student) =>
-    [student.name, student.department, student.email].join(' ').toLowerCase().includes(query.toLowerCase())
-  ), [students, query]);
-
-  const updateSubject = (index, field, value) => {
-    setSubjects((current) => current.map((item, i) => i === index ? { ...item, [field]: value } : item));
-  };
-
-  const saveStudent = async (event) => {
+  const analyze = async (event) => {
     event.preventDefault();
-    if (!name.trim()) return toast.error('Enter the student name.');
-    if (subjects.some((item) => !item.subject.trim() || item.marks === '' || Number(item.marks) < 0 || Number(item.marks) > 100)) {
-      return toast.error('Complete every competency with a score between 0 and 100.');
-    }
-    setSaving(true);
-    try {
-      const { data } = await api.post('/students', {
-        name, email, department, year,
-        subjects: subjects.map((item) => ({ subject: item.subject.trim(), marks: Number(item.marks) }))
-      });
-      setStudents((current) => [data.student, ...current]);
-      setName(''); setEmail(''); setDepartment(''); setYear(''); setSubjects([emptySubject()]);
-      toast.success('Student record saved.');
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Unable to save student.');
-    } finally { setSaving(false); }
+    if (!file) return toast.error('Upload your resume first.');
+    if (customMode && jobDescription.trim().length < 80) return toast.error('Paste a complete job description (at least 80 characters).');
+    if (!customMode && !selectedJob) return toast.error('Select a job to continue.');
+    const body = new FormData();
+    body.append('resume', file);
+    if (customMode) body.append('jobDescription', jobDescription);
+    else body.append('jobId', selectedJob);
+    setLoading(true); setResult(null);
+    try { const { data } = await api.post('/resume/analyze', body, { headers: { 'Content-Type': 'multipart/form-data' } }); setResult(data); setTimeout(() => document.getElementById('analysis-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }
+    catch (error) { toast.error(error.response?.data?.message || 'Analysis failed. Check the API and try again.'); }
+    finally { setLoading(false); }
   };
 
-  const viewReport = async (id) => {
-    try {
-      const { data } = await api.get(`/students/${id}`);
-      setReport(data);
-      window.setTimeout(() => document.getElementById('student-report')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
-    } catch (error) { toast.error(error.response?.data?.message || 'Unable to load report.'); }
-  };
+  const activeJob = jobs.find((job) => job.id === selectedJob);
+  const scoreColor = (score) => score >= 80 ? 'good' : score >= 60 ? 'mid' : 'low';
 
-  const deleteStudent = async (id) => {
-    if (!window.confirm('Delete this student record? This cannot be undone.')) return;
-    try {
-      await api.delete(`/students/${id}`);
-      setStudents((current) => current.filter((student) => student.id !== id));
-      if (report?.id === id) setReport(null);
-      toast.success('Student record deleted.');
-    } catch (error) { toast.error(error.response?.data?.message || 'Unable to delete student.'); }
-  };
-
-  const average = students.length ? Math.round(students.reduce((sum, item) => sum + Number(item.averageScore || 0), 0) / students.length) : 0;
-  const readyCount = students.filter((item) => item.averageScore >= 85).length;
-  const chartData = report ? {
-    labels: report.subjects.map((item) => item.subject),
-    datasets: [{ label: 'Competency score', data: report.subjects.map((item) => item.marks), backgroundColor: '#6d7cff', borderRadius: 8 }]
-  } : null;
-
-  return <div className="app-shell">
-    <aside className="sidebar">
-      <div className="brand"><span className="brand-mark">C</span><div><strong>CBE</strong><small>WORKFORCE READINESS</small></div></div>
-      <div className="side-label">WORKSPACE</div>
-      <a className="nav-item active" href="#overview">▦ <span>Overview</span></a>
-      <a className="nav-item" href="#students">♙ <span>Students</span></a>
-      <a className="nav-item" href="#add-student">＋ <span>Add student</span></a>
-      <div className="sidebar-bottom"><div className="status-dot"></div><span>Local workspace</span><small>v1.1</small></div>
-    </aside>
-
-    <main className="main-content" id="overview">
-      <header className="topbar"><div><span className="eyebrow">ACADEMIC ANALYTICS / OVERVIEW</span><h1>Workforce readiness</h1><p>Track student competencies and identify development opportunities.</p></div><div className="top-tag"><span className="status-dot"></span> System workspace</div></header>
-
-      <section className="stats-grid">
-        <article className="stat-card"><span className="stat-icon violet">♙</span><span className="stat-label">TOTAL STUDENTS</span><strong>{students.length}</strong><small>Registered learner records</small></article>
-        <article className="stat-card"><span className="stat-icon blue">◎</span><span className="stat-label">AVERAGE SCORE</span><strong>{average}<em>/100</em></strong><small>Across all competency scores</small></article>
-        <article className="stat-card"><span className="stat-icon green">↗</span><span className="stat-label">WORKFORCE READY</span><strong>{readyCount}</strong><small>Score of 85 or above</small></article>
-        <article className="stat-card"><span className="stat-icon amber">⌁</span><span className="stat-label">DEVELOPMENT NEEDED</span><strong>{students.length - readyCount}</strong><small>Students below readiness level</small></article>
-      </section>
-
-      <section className="content-grid">
-        <div className="panel students-panel" id="students">
-          <div className="panel-heading"><div><span className="eyebrow">LEARNER DIRECTORY</span><h2>Student records</h2></div><span className="count-pill">{students.length} records</span></div>
-          <div className="toolbar"><input aria-label="Search students" placeholder="Search by name, email or department..." value={query} onChange={(e) => setQuery(e.target.value)} /></div>
-          {loading ? <div className="empty-state">Loading student records…</div> : filteredStudents.length === 0 ? <div className="empty-state"><span>⌕</span><strong>No student records found</strong><small>Add a student to begin tracking competencies.</small></div> :
-            <div className="table-wrap"><table><thead><tr><th>STUDENT</th><th>DEPARTMENT</th><th>AVERAGE</th><th>READINESS</th><th>ACTION</th></tr></thead><tbody>
-              {filteredStudents.map((student) => <tr key={student.id}><td><div className="student-cell"><span className="avatar">{student.name.slice(0,1).toUpperCase()}</span><div><strong>{student.name}</strong><small>{student.email || 'No email provided'}</small></div></div></td><td>{student.department || '—'}</td><td><strong>{Number(student.averageScore).toFixed(1)}%</strong></td><td><span className={`level-pill ${levelClass(student.averageScore)}`}>{student.skillsetPrediction}</span></td><td><div className="actions"><button className="link-button" onClick={() => viewReport(student.id)}>View report</button><button className="delete-button" aria-label={`Delete ${student.name}`} onClick={() => deleteStudent(student.id)}>×</button></div></td></tr>)}
-            </tbody></table></div>}
+  return <div className="shell">
+    <aside className="sidebar"><div className="brand"><span className="brand-icon">C</span><div><b>career<span>fit</span></b><small>RESUME INTELLIGENCE</small></div></div><div className="nav-caption">WORKSPACE</div><a className="nav-link active" href="#analyzer"><span>⌕</span> Resume analyzer</a><a className="nav-link" href="#job-library"><span>▤</span> Job library</a><div className="side-note"><span className="pulse"></span> Analysis engine ready</div><div className="side-bottom"><b>CAREERFIT</b><small>Evidence-led career insights</small></div></aside>
+    <main className="main">
+      <header className="header"><div><div className="crumb">WORKSPACE <span>/</span> RESUME ANALYZER</div><h1>Find your next <i>opportunity.</i></h1><p>See how your experience aligns with real role requirements — and what to improve next.</p></div><div className="header-chip"><span className="pulse"></span> Matching engine online</div></header>
+      <section className="intro-strip"><div className="intro-symbol">✳</div><div><b>One resume. A clearer career direction.</b><p>Upload your resume, choose a role and get a transparent, evidence-backed match report.</p></div><div className="steps"><span>01 UPLOAD</span><span>02 SELECT ROLE</span><span>03 ANALYZE</span></div></section>
+      <form className="workspace-grid" id="analyzer" onSubmit={analyze}>
+        <section className="panel upload-panel"><div className="section-head"><div><span className="kicker">STEP 01</span><h2>Upload your resume</h2><p>We’ll extract your experience, education, projects and skills.</p></div><span className="step-number">01</span></div>
+          <label className={`dropzone ${dragging ? 'dragging' : ''} ${file ? 'has-file' : ''}`} onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(e) => { e.preventDefault(); setDragging(false); acceptFile(e.dataTransfer.files[0]); }}>
+            <input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => acceptFile(e.target.files[0])} />
+            <span className="upload-icon">{file ? '✓' : '↑'}</span><b>{file ? file.name : 'Drop your resume here'}</b><small>{file ? `${(file.size / 1024).toFixed(0)} KB · Ready to analyze` : 'or click to browse your files'}</small><span className="file-types">PDF or DOCX <i>·</i> MAX 5 MB</span>
+          </label>
+          {file && <button type="button" className="remove-file" onClick={() => { setFile(null); setResult(null); }}>Remove file ×</button>}
+          <div className="privacy-note"><span>♢</span> Resume is processed for this analysis and is not saved to a profile.</div>
+        </section>
+        <section className="panel job-panel"><div className="section-head"><div><span className="kicker">STEP 02</span><h2>Choose your target role</h2><p>Compare against a curated job or your own job description.</p></div><span className="step-number">02</span></div>
+          <div className="mode-tabs"><button type="button" className={!customMode ? 'selected' : ''} onClick={() => setCustomMode(false)}>Job library <span>{jobs.length}</span></button><button type="button" className={customMode ? 'selected' : ''} onClick={() => setCustomMode(true)}>Custom job description</button></div>
+          {!customMode ? <><label className="field-label" htmlFor="job-select">SELECT A JOB</label><select id="job-select" value={selectedJob} onChange={(e) => setSelectedJob(e.target.value)}>{jobs.map((job) => <option key={job.id} value={job.id}>{job.title} — {job.company}</option>)}</select>{activeJob && <div className="job-preview"><div className="job-preview-top"><div><b>{activeJob.title}</b><small>{activeJob.company} · {activeJob.location}</small></div><span>{activeJob.type}</span></div><div className="job-meta"><span>◷ {activeJob.experience}</span><span>▦ {activeJob.category}</span></div><p>{activeJob.description}</p><div className="skill-chips">{activeJob.requiredSkills.map((skill) => <span key={skill}>{skill}</span>)}</div></div></> : <><label className="field-label" htmlFor="custom-jd">PASTE JOB DESCRIPTION</label><textarea id="custom-jd" value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} placeholder="Paste the complete job description, including responsibilities and required skills..." rows="9"/><small className="helper">Include the skills and responsibilities for a more useful comparison.</small></>}
+        </section>
+        <div className="analyze-row"><div><b>Ready when you are.</b><small>Your report will include matched skills, missing requirements and practical recommendations.</small></div><button type="submit" disabled={loading || !jobs.length}>{loading ? <><span className="spinner"></span> Analyzing resume…</> : 'Analyze resume ↗'}</button></div>
+      </form>
+      {result && <section className="results" id="analysis-result"><div className="result-heading"><div><span className="kicker">STEP 03 · ANALYSIS COMPLETE</span><h2>Your match report</h2><p>{result.fileName} <span>·</span> {result.job.title} at {result.job.company}</p></div><button className="new-analysis" onClick={() => { setResult(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>＋ New analysis</button></div>
+        <div className="result-grid"><article className="panel score-card"><span className="kicker">OVERALL MATCH</span><div className={`score-ring ${scoreColor(result.analysis.score)}`} style={{ '--score-angle': (result.analysis.score * 3.6) + 'deg' }}><div><strong>{result.analysis.score}</strong><small>/100</small></div></div><span className={`verdict ${scoreColor(result.analysis.score)}`}>{result.analysis.verdict}</span><p>{result.analysis.summary}</p><small className="muted">{result.resume.wordCount} words scanned · {result.analysis.skillsFound.length} skills detected</small></article>
+          <article className="panel breakdown-card"><span className="kicker">SCORE BREAKDOWN</span><h3>What shaped your score</h3>{result.analysis.scoring.map((item) => <div className="metric" key={item.label}><div><span>{item.label}</span><b>{item.score}% <small>· {item.weight}</small></b></div><div className="track"><i style={{ width: item.score + '%' }}></i></div></div>)}</article>
         </div>
-
-        <form className="panel form-panel" id="add-student" onSubmit={saveStudent}>
-          <div className="panel-heading"><div><span className="eyebrow">NEW LEARNER</span><h2>Add student</h2></div><span className="plus-mark">＋</span></div>
-          <label>Full name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Aanya Sharma" required /></label>
-          <label>Email address <span className="optional">OPTIONAL</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="student@example.com" /></label>
-          <div className="two-fields"><label>Department<input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Computer Science" /></label><label>Academic year<input value={year} onChange={(e) => setYear(e.target.value)} placeholder="Final year" /></label></div>
-          <div className="competency-heading"><strong>Competency assessment</strong><small>Score each area from 0–100</small></div>
-          {subjects.map((item, index) => <div className="subject-row" key={index}><input aria-label={`Competency ${index + 1}`} value={item.subject} onChange={(e) => updateSubject(index, 'subject', e.target.value)} placeholder="e.g. Problem solving" required /><input aria-label={`Score ${index + 1}`} type="number" min="0" max="100" value={item.marks} onChange={(e) => updateSubject(index, 'marks', e.target.value)} placeholder="Score" required />{subjects.length > 1 && <button type="button" className="remove-subject" onClick={() => setSubjects((current) => current.filter((_, i) => i !== index))}>×</button>}</div>)}
-          <button type="button" className="add-competency" onClick={() => setSubjects((current) => [...current, emptySubject()])}>＋ Add competency</button>
-          <button type="submit" className="submit-button" disabled={saving}>{saving ? 'Saving record…' : 'Save student record  →'}</button>
-        </form>
-      </section>
-
-      {report && <section className="panel report-panel" id="student-report"><div className="panel-heading"><div><span className="eyebrow">INDIVIDUAL ASSESSMENT</span><h2>{report.name} — competency report</h2></div><button className="close-report" onClick={() => setReport(null)}>Close ×</button></div><div className="report-summary"><div><small>OVERALL SCORE</small><strong>{Number(report.averageScore).toFixed(1)}%</strong></div><div><small>READINESS LEVEL</small><span className={`level-pill ${levelClass(report.averageScore)}`}>{report.skillsetPrediction}</span></div><div><small>COMPETENCIES ASSESSED</small><strong>{report.subjects.length}</strong></div></div><div className="chart-wrap"><Bar data={chartData} options={{ responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100, grid: { color: '#edf0f5' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }} /></div></section>}
-      <footer> CBE · Competency-Based Education Workforce Preparedness <span>Scores are indicative academic assessments, not validated employment predictions.</span></footer>
-    </main>
-    <ToastContainer position="bottom-right" />
+        <div className="result-grid skills-grid"><article className="panel"><span className="kicker">SKILL ALIGNMENT</span><h3>Required skills</h3><div className="skill-list">{result.job.requiredSkills.map((skill) => <div key={skill}><span className={result.analysis.matchedRequired.includes(skill) ? 'skill-ok' : 'skill-missing'}>{result.analysis.matchedRequired.includes(skill) ? '✓' : '!'}</span><span>{skill}</span><small>{result.analysis.matchedRequired.includes(skill) ? 'Found in resume' : 'Not detected'}</small></div>)}</div></article><article className="panel"><span className="kicker">ADDITIONAL ALIGNMENT</span><h3>Preferred skills</h3><div className="skill-list">{result.job.preferredSkills.length ? result.job.preferredSkills.map((skill) => <div key={skill}><span className={result.analysis.matchedPreferred.includes(skill) ? 'skill-ok' : 'skill-missing'}>{result.analysis.matchedPreferred.includes(skill) ? '✓' : '·'}</span><span>{skill}</span><small>{result.analysis.matchedPreferred.includes(skill) ? 'Found in resume' : 'Not detected'}</small></div>) : <p className="muted">No preferred skills were specified.</p>}</div></article></div>
+        <article className="panel evidence-panel"><span className="kicker">MATCH EVIDENCE</span><h3>What the analyzer found</h3>{result.analysis.evidence.length ? result.analysis.evidence.map((item) => <div className="evidence" key={item.skill}><b>{item.skill}</b><p>“{item.excerpt}”</p></div>) : <p className="muted">No direct evidence snippets were found for matched skills. Review the extracted skills and resume text manually.</p>}</article>
+        <article className="panel recommendations"><span className="kicker">YOUR NEXT STEPS</span><h3>Recommendations to strengthen your application</h3>{result.analysis.recommendations.length ? <ol>{result.analysis.recommendations.map((item, index) => <li key={index}>{item}</li>)}</ol> : <p>Your resume covers the listed requirements well. Tailor the summary and project bullets to this role.</p>}</article>
+        <p className="disclaimer">Important: {result.analysis.disclaimer}</p>
+      </section>}
+      <section className="job-library" id="job-library"><div className="library-heading"><div><span className="kicker">EXPLORE OPPORTUNITIES</span><h2>Curated job library</h2><p>Try your resume against different entry-level roles.</p></div><span className="library-count">{jobs.length} SAMPLE ROLES</span></div><div className="job-cards">{jobs.map((job) => <button key={job.id} className={selectedJob === job.id && !customMode ? 'job-card chosen' : 'job-card'} onClick={() => { setSelectedJob(job.id); setCustomMode(false); document.getElementById('analyzer')?.scrollIntoView({ behavior: 'smooth' }); }}><span>{job.category}</span><b>{job.title}</b><small>{job.company} · {job.location}</small><div>{job.requiredSkills.slice(0, 3).map((skill) => <i key={skill}>{skill}</i>)}</div><strong>Use this role →</strong></button>)}</div></section>
+      <footer>CAREERFIT <span>Transparent analysis. Better applications.</span></footer>
+    </main><ToastContainer position="bottom-right"/>
   </div>;
 }
-
 export default App;

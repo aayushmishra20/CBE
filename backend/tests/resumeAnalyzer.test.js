@@ -10,11 +10,7 @@ test('sample job library contains multiple entry-level roles', () => {
 
 test('extracts supported skills from resume text', () => {
   const skills = extractSkills('Built a React frontend with JavaScript and Node.js. Used PostgreSQL and Docker.');
-  assert.ok(skills.includes('React'));
-  assert.ok(skills.includes('JavaScript'));
-  assert.ok(skills.includes('Node.js'));
-  assert.ok(skills.includes('PostgreSQL'));
-  assert.ok(skills.includes('Docker'));
+  for (const skill of ['React', 'JavaScript', 'Node.js', 'PostgreSQL', 'Docker']) assert.ok(skills.includes(skill), skill);
 });
 
 test('analysis reports missing requirements and a bounded score', () => {
