@@ -186,7 +186,7 @@ function App() {
 
           <div className="analyze-row">
             <div><b>Ready when you are.</b><small>Your report will include matched skills, missing requirements and practical recommendations.</small></div>
-            <button type="submit" disabled={loading || !jobs.length}>
+            <button type="submit" disabled={loading || (!customMode && !jobs.length)}>
               {loading ? <><span className="spinner"></span> Analyzing resume…</> : 'Analyze resume ↗'}
             </button>
           </div>
