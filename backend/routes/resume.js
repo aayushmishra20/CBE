@@ -52,7 +52,13 @@ router.post('/analyze', upload.single('resume'), async (req, res, next) => {
     });
   } catch (error) {
     if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ message: 'Resume exceeds the 5 MB upload limit.' });
+    if (extensionError(error)) return res.status(400).json({ message: 'Upload a valid PDF or DOCX resume.' });
+    if (error && (error.name === 'InvalidPDFException' || /pdf|zip|central directory|unexpected end/i.test(error.message || ''))) {
+      return res.status(422).json({ message: 'The file could not be read. Please upload a valid, text-based PDF or DOCX document.' });
+    }
     next(error);
   }
 });
+function extensionError(error) { return Boolean(error && error.message && error.message.startsWith('Upload a PDF')); }
+
 module.exports = router;
