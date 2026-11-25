@@ -1,56 +1,43 @@
-# CBE — Competency-Based Education Workforce Preparedness
+# CareerFit — Resume Intelligence & Job Matching
 
-A React + Express + SQLite application for recording student competency scores, calculating indicative readiness levels, and reviewing individual assessment reports.
+CareerFit is a resume-to-job-description comparison application built with React, Express and local document parsing. Users upload a PDF/DOCX resume, choose a sample role or paste a custom job description, and receive a transparent skills-match report.
 
 ## Requirements
-- Node.js 18 or newer
-- npm 9 or newer
+- Node.js 18+
+- npm 9+
 
-## Quick start
+## Setup
 ```bash
 npm install
 npm run dev
 ```
-This starts the React development server at http://localhost:3000 and the API at http://localhost:5001. The React development server proxies `/api` requests to the backend.
+Frontend: http://localhost:3000  
+API: http://localhost:5001
 
-Run either service separately with `npm start` (frontend) or `npm run server` (backend).
-
-## Useful commands
-- `npm run db:init` — initialize/check the SQLite database.
-- `npm test` — run frontend tests once.
-- `npm run build` — create a production frontend build.
+## Workflow
+1. Upload a text-based PDF or DOCX resume (maximum 5 MB).
+2. Choose one of the curated sample jobs or paste a custom job description.
+3. The API extracts document text and identifies skills using a maintained skills/alias taxonomy.
+4. The analyzer compares required and preferred skills, extracts evidence snippets, and calculates a transparent weighted score.
+5. Review missing requirements and practical resume recommendations.
 
 ## API
-- `GET /api/health` — health check.
-- `GET /api/students` — list student records.
-- `POST /api/students` — create a student and calculate the average/readiness level.
-- `GET /api/students/:id` — fetch an individual report.
-- `DELETE /api/students/:id` — delete a student record.
+- `GET /api/health` — service health.
+- `GET /api/jobs` — curated sample jobs.
+- `GET /api/jobs/:id` — one job.
+- `POST /api/resume/analyze` — multipart form with `resume` (PDF/DOCX) and either `jobId` or `jobDescription`.
 
-Example request:
-```json
-{
-  "name": "Aanya Sharma",
-  "email": "aanya@example.com",
-  "department": "Computer Science",
-  "year": "Final year",
-  "subjects": [
-    { "subject": "Problem solving", "marks": 88 },
-    { "subject": "Communication", "marks": 76 }
-  ]
-}
-```
+## Scoring
+The match score is a deterministic heuristic:
+- Skills alignment: 80% (required skills weighted more heavily than preferred skills).
+- Experience signal: 10%.
+- Education section signal: 5%.
+- Project/delivery evidence: 5%.
 
-## Readiness rubric
-- 85–100: Workforce Ready
-- 70–84.9: Proficient
-- 50–69.9: Developing
-- Below 50: Needs Support
+The report separately shows required/preferred skill coverage and text excerpts supporting detected skills. This is not a trained machine-learning model, an employment prediction or a hiring decision. It can miss synonyms, implicit experience and text in scanned/image-only PDFs. OCR is not included.
 
-These labels are simple rules applied to entered academic competency scores. They are not validated predictions of hiring outcomes.
+## Privacy and limits
+Uploads are processed in memory and are not written to disk or persisted in the database. Maximum upload size is 5 MB. Use text-based PDFs or DOCX; scanned PDFs require OCR before analysis. The sample job listings are illustrative demo data, not live vacancies.
 
-## Data and configuration
-SQLite data is stored at `backend/data/cbe.sqlite` by default and excluded from version control. Set `DB_PATH` to use another database file. Set `PORT` to change the API port and `REACT_APP_API_URL` to point the frontend at a separately hosted API.
-
-## Notes
-The project is a student competency tracking prototype. It does not currently parse resumes or job descriptions, and it does not claim AI-based skill inference.
+## Configuration
+Set `PORT` to change the API port and `REACT_APP_API_URL` to use a separately hosted API. In local development, the frontend proxies `/api` to port 5001.
