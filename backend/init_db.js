@@ -1,16 +1,10 @@
 const db = require('./database');
-
-db.serialize(() => {
-    // Create Students table
-    db.run(`
-        CREATE TABLE IF NOT EXISTS students (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            subjects TEXT NOT NULL,  // Store subjects and marks as JSON
-            averageScore REAL,      // Store calculated average score
-            skillsetPrediction TEXT // Store AI-generated skillset prediction
-        )
-    `);
+db.get('SELECT COUNT(*) AS count FROM students', (error, row) => {
+  if (error) {
+    console.error('Database initialization failed:', error.message);
+    process.exitCode = 1;
+  } else {
+    console.log(`CBE database ready (${row.count} student records).`);
+  }
+  db.close();
 });
-
-db.close();

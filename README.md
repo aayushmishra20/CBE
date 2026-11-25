@@ -1,70 +1,56 @@
-# Getting Started with Create React App
+# CBE — Competency-Based Education Workforce Preparedness
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A React + Express + SQLite application for recording student competency scores, calculating indicative readiness levels, and reviewing individual assessment reports.
 
-## Available Scripts
+## Requirements
+- Node.js 18 or newer
+- npm 9 or newer
 
-In the project directory, you can run:
+## Quick start
+```bash
+npm install
+npm run dev
+```
+This starts the React development server at http://localhost:3000 and the API at http://localhost:5001. The React development server proxies `/api` requests to the backend.
 
-### `npm start`
+Run either service separately with `npm start` (frontend) or `npm run server` (backend).
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Useful commands
+- `npm run db:init` — initialize/check the SQLite database.
+- `npm test` — run frontend tests once.
+- `npm run build` — create a production frontend build.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## API
+- `GET /api/health` — health check.
+- `GET /api/students` — list student records.
+- `POST /api/students` — create a student and calculate the average/readiness level.
+- `GET /api/students/:id` — fetch an individual report.
+- `DELETE /api/students/:id` — delete a student record.
 
-### `npm test`
+Example request:
+```json
+{
+  "name": "Aanya Sharma",
+  "email": "aanya@example.com",
+  "department": "Computer Science",
+  "year": "Final year",
+  "subjects": [
+    { "subject": "Problem solving", "marks": 88 },
+    { "subject": "Communication", "marks": 76 }
+  ]
+}
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Readiness rubric
+- 85–100: Workforce Ready
+- 70–84.9: Proficient
+- 50–69.9: Developing
+- Below 50: Needs Support
 
-### `npm run build`
+These labels are simple rules applied to entered academic competency scores. They are not validated predictions of hiring outcomes.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Data and configuration
+SQLite data is stored at `backend/data/cbe.sqlite` by default and excluded from version control. Set `DB_PATH` to use another database file. Set `PORT` to change the API port and `REACT_APP_API_URL` to point the frontend at a separately hosted API.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Notes
+The project is a student competency tracking prototype. It does not currently parse resumes or job descriptions, and it does not claim AI-based skill inference.
