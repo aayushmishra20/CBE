@@ -1,8 +1,15 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import App from './App';
+import api from './api';
 
-test('renders learn react link', () => {
+jest.mock('./api', () => ({
+  get: jest.fn()
+}));
+
+test('renders the CBE workforce readiness workspace', async () => {
+  api.get.mockResolvedValue({ data: [] });
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /workforce readiness/i })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /student records/i })).toBeInTheDocument();
+  await waitFor(() => expect(api.get).toHaveBeenCalledWith('/students'));
 });
