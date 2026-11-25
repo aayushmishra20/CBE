@@ -1,8 +1,14 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import App from './App';
+import axios from 'axios';
 
-test('renders learn react link', () => {
+jest.mock('axios');
+axios.get.mockResolvedValue({ data: [] });
+
+test('renders the CBE workspace and primary workflows', () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  expect(screen.getByText(/Competency-Based Education/i)).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /Add a student/i })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /Analyze a resume/i })).toBeInTheDocument();
 });
